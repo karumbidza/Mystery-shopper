@@ -1,0 +1,131 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      UserRole @default(CLIENT)
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  projects  Project[]
+  
+  @@map("users")
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  clientId    String
+  client      User     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  surveys     Survey[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("projects")
+}
+
+model Survey {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  questions   Question[]
+  links       SurveyLink[]
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("surveys")
+}
+
+model Question {
+  id          String   @id @default(cuid())
+  surveyId    String
+  survey      Survey   @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  text        String
+  type        QuestionType
+  required    Boolean  @default(false)
+  options     Json?
+  logic       Json?
+  order       Int
+  createdAt   DateTime @default(now())
+  
+  answers     Answer[]
+  
+  @@map("questions")
+}
+
+model SurveyLink {
+  id           String   @id @default(cuid())
+  surveyId     String
+  survey       Survey   @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  shopName     String
+  latitude     Float?
+  longitude    Float?
+  geoRadius    Int      @default(100)
+  uniqueHash   String   @unique
+  dueDate      DateTime?
+  isActive     Boolean  @default(true)
+  maxResponses Int?
+  
+  responses    Response[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  @@map("survey_links")
+}
+
+model Response {
+  id            String   @id @default(cuid())
+  surveyLinkId  String
+  surveyLink    SurveyLink @relation(fields: [surveyLinkId], references: [id], onDelete: Cascade)
+  sessionId     String   @unique
+  completed     Boolean  @default(false)
+  progressData  Json?
+  locationData  Json?
+  ipAddress     String?
+  userAgent     String?
+  startedAt     DateTime @default(now())
+  completedAt   DateTime?
+  
+  answers       Answer[]
+  
+  @@map("responses")
+}
+
+model Answer {
+  id          String @id @default(cuid())
+  responseId  String
+  response    Response @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  questionId  String
+  question    Question @relation(fields: [questionId], references: [id])
+  answerValue Json
+  
+  @@map("answers")
+}
+
+enum UserRole {
+  ADMIN
+  CLIENT
+}
+
+enum QuestionType {
+  TEXT
+  NUMBER
+  RADIO
+  CHECKBOX
+  RATING
+  SCALE
+}
